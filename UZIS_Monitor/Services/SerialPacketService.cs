@@ -44,15 +44,15 @@ namespace UZIS_Monitor.Services
                 {
                     // Проверка на "зависание" данных (Watchdog)
                     // Если данных нет более 1 секунды при активном подключении
-                    if ((DateTime.UtcNow - _lastPacketTime).TotalMilliseconds > 1000)
+                    if ((DateTime.UtcNow - _lastPacketTime).TotalMilliseconds > 200)
                     {
                         OnStatusChanged?.Invoke("Данные не поступают. Переподключение...");
                         Disconnect(); // Закрываем порт, чтобы цикл поиска запустился снова
                     }
                 }
 
-                // Если не подключились, ждем 2 секунды перед следующей попыткой
-                await Task.Delay(2000);
+                // Если не подключились, ждем 0.1 секунды перед следующей попыткой
+                await Task.Delay(100);
             }
         }
 
@@ -90,14 +90,14 @@ namespace UZIS_Monitor.Services
 
         private SerialPortStream? GetPortIfValid(string portName, int baudRate)
         {
-            var port = new SerialPortStream(portName, baudRate) { ReadTimeout = 1000, ReadBufferSize = 8192 };
+            var port = new SerialPortStream(portName, baudRate) { ReadTimeout = 100, ReadBufferSize = 8192 };
 
             try
             {
                 port.Open();
 
                 // Читаем немного данных для поиска заголовка
-                byte[] checkBuf = new byte[2048];
+                byte[] checkBuf = new byte[1024];
                 int read = port.Read(checkBuf, 0, checkBuf.Length);
 
                 if (checkBuf.AsSpan(0, read).IndexOf(Header) != -1)

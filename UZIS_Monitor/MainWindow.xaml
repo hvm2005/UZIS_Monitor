@@ -103,10 +103,24 @@
                    FontFamily="Bahnschrift"
                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                    IsHitTestVisible="False">
-            <TextBlock.RenderTransform>
+            <TextBlock.LayoutTransform>
                 <ScaleTransform ScaleX="1.1" />
                 <!-- Легкая растяжка по горизонтали для солидности -->
-            </TextBlock.RenderTransform>
+            </TextBlock.LayoutTransform>
+        </TextBlock>
+        <TextBlock Grid.Row="0"
+                   Text="{Binding FileName}"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Bottom"
+                   Opacity="0.8"
+                   FontSize="10"
+                   FontWeight="Regular"
+                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                   IsHitTestVisible="False">
+            <TextBlock.LayoutTransform>
+                <ScaleTransform ScaleX="0.9" />
+                <!-- Легкая растяжка по горизонтали для солидности -->
+            </TextBlock.LayoutTransform>
         </TextBlock>
         <!-- IsHitTestVisible="False" позволяет кликать/перетаскивать окно сквозь текст -->
         <Grid Grid.Row="1" IsEnabled="{Binding IsConnected}">
@@ -213,8 +227,8 @@
                     </Label.InputBindings>
                     <Label.Content>
                         <StackPanel Orientation="Horizontal">
-                            <ui:SymbolIcon Symbol="Pulse24" Foreground="Orange" Margin="0,0,2,0"></ui:SymbolIcon>
-                            <TextBlock Text="{Binding OffCount}" VerticalAlignment="Center"></TextBlock>
+                            <ui:SymbolIcon Symbol="Pulse24" Foreground="Orange" Margin="0,0,2,0" VerticalAlignment="Center"></ui:SymbolIcon>
+                            <TextBlock Text="{Binding OffCount}" Foreground="Orange" VerticalAlignment="Center" FontWeight="Bold"></TextBlock>
                         </StackPanel>
                     </Label.Content>
                 </Label>
