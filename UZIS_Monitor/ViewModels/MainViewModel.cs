@@ -28,7 +28,7 @@ public enum RecordingStates
 
 public partial class MainViewModel : ObservableObject
 {
-    private readonly SerialPacketService _serialService;
+    private readonly SerialService _serialService;
     private readonly IEnumerable<IDataExporter> _exporters;
     private readonly IEnumerable<IDataImporter> _importers;
 
@@ -334,7 +334,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     // DI-контейнер сам найдет этот конструктор и подставит сервис
-    public MainViewModel(SerialPacketService serialService, IEnumerable<IDataExporter> exporters, IEnumerable<IDataImporter> importers)
+    public MainViewModel(SerialService serialService, IEnumerable<IDataExporter> exporters, IEnumerable<IDataImporter> importers)
     {
         _serialService = serialService;
         _exporters = exporters.ToList();
@@ -342,7 +342,7 @@ public partial class MainViewModel : ObservableObject
 
         _ = ListenToPacketsAsync();
 
-        _serialService.OnStatusChanged += (msg) => StatusMessage = msg;
+        //_serialService.OnStatusChanged += (msg) => StatusMessage = msg;
         // Подписываемся на изменение состояния связи
         _serialService.OnConnectionStatusChanged += (connected) =>
         {

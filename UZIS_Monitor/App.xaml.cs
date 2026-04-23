@@ -42,7 +42,7 @@ namespace UZIS_Monitor
             var services = new ServiceCollection();
 
             // Регистрируем сервис порта как Singleton (один на всё приложение)
-            services.AddSingleton<SerialPacketService>();
+            services.AddSingleton<SerialService>();
 
             // 1. Регистрируем Protobuf как синглтон (один экземпляр на всё приложение)
             services.AddSingleton<ProtobufFileService>();
@@ -93,7 +93,7 @@ namespace UZIS_Monitor
         protected override void OnExit(ExitEventArgs e)
         {
             // Получаем наш Singleton-сервис из контейнера
-            var serialService = Services.GetService<SerialPacketService>();
+            var serialService = Services.GetService<SerialService>();
 
             // Останавливаем фоновые потоки и закрываем порт
             serialService?.StopService();
