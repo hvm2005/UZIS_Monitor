@@ -28,8 +28,8 @@ namespace UZIS_Monitor.Models
         [ProtoMember(1)] private short MeanKkmRaw;
         [ProtoMember(2)] private short MeanDinRaw;
         [ProtoMember(3)] private ushort VoltageArcRaw;
-        [ProtoMember(5)] private ushort NoiseIntRaw;
-        [ProtoMember(6)] private uint TimeRaw;
+        [ProtoMember(4)] private ushort NoiseIntRaw;
+        [ProtoMember(5)] private uint TimeRaw;
 
         // Свойства (не занимают память, вычисляются при обращении)
         public double MeanKkm => MeanKkmRaw * (3.3d / 4.096d);
@@ -44,25 +44,25 @@ namespace UZIS_Monitor.Models
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct PacketData
     {
-        [ProtoMember(16)] private uint NumberRaw;
-        [ProtoMember(1)] private uint LineAccumRaw;
-        [ProtoMember(2)] private uint LineCounterRaw;
-        [ProtoMember(8)] private short LinePolarityRaw;
+        [ProtoMember(1)] private uint NumberRaw;
+        [ProtoMember(2)] private uint LineAccumRaw;
+        [ProtoMember(3)] private uint LineCounterRaw;
+        [ProtoMember(4)] private short LinePolarityRaw;
         [ProtoMember(5)] private ushort EvPhase2Raw;
         [ProtoMember(6)] private ushort EvPhase4Raw;
-        [ProtoMember(9)] private short AccumulatorRaw;
-        [ProtoMember(7)] private int SigmaKkmRaw;
+        [ProtoMember(7)] private short AccumulatorRaw;
+        [ProtoMember(8)] private int SigmaKkmRaw;
 
         // --- Массив вложенных структур ---
         // ВМЕСТО: public EventData[] Events;
         // ТЕПЕРЬ: Полноценный вложенный буфер (не ссылочный тип!)
         private EventsBuffer Events;
 
-        [ProtoMember(3)] private short MthRaw;
-        [ProtoMember(4)] private ushort Crc16Raw;
+        [ProtoMember(9)] private short MthRaw;
+        [ProtoMember(10)] private ushort Crc16Raw;
 
         // Свойство-посредник для Protobuf
-        [ProtoMember(15, OverwriteList = true)] public EventData[] ProtoEvents
+        [ProtoMember(11, OverwriteList = true)] public EventData[] ProtoEvents
         {
             get
             {
@@ -106,7 +106,7 @@ namespace UZIS_Monitor.Models
         public double SigmaKkm => SigmaKkmRaw * (3.3d / 4.096d);
         public string Polarity => LinePolarityRaw == 1 ? "+" : "-";
         public short Accumulator => AccumulatorRaw;
-        public bool IsEmpty => EvPhase2Raw + EvPhase4Raw == 0;
+        public bool IsEmpty => EvPhase2Raw + EvPhase4Raw + AccumulatorRaw == 0;
         public ushort Crc16 => Crc16Raw;
         public ushort CalcCrc => ComputeCrc16Stm32(MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref Unsafe.AsRef(in this), 1))[..^2]);
         public bool IsCrcValid => Crc16 == CalcCrc;

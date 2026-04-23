@@ -2,10 +2,14 @@
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
+using ProtoBuf.Meta;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Reflection.Metadata;
 using System.Runtime;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Threading.Channels;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -30,11 +34,10 @@ public partial class MainViewModel : ObservableObject
 
     // Внутреннее хранилище для высокоскоростной записи
     private readonly List<PacketData> _historyBuffer = [];
-    //private readonly ConcurrentQueue<PacketData> _uiQueue = new();
     private readonly object _lock = new();
     private readonly DispatcherTimer _uiRefreshTimer;
 
-    [ObservableProperty] private PacketData _currentPacket;
+    private PacketData _currentPacket;
     [ObservableProperty] private string _statusMessage = "Ожидание подключения...";
     [ObservableProperty] private bool _isConnected;
     [ObservableProperty] private TimeSpan _recordTime;
@@ -48,69 +51,65 @@ public partial class MainViewModel : ObservableObject
     // Свойство для индикации наличия связи в UI (например, для зеленой лампочки)
 
     // Коллекция для DataGrid (обновляется только при необходимости)
-    [ObservableProperty] private List<PacketData> _displayHistory = [];
+    [ObservableProperty] private object? _displayHistorySource;
+    //private ObservableCollection<PacketData> DisplayHistory { get; } = [];
+
+    // Постоянная коллекция "живых" строк
+    private ObservableCollection<PacketViewModel> DisplayHistory { get; } =
+        new(Enumerable.Range(0, 25).Select(_ => new PacketViewModel()));
 
     private double _voltageSum;
     private int _voltageCount;
 
+    [ObservableProperty] private short _mth;
     [ObservableProperty] private double _smoothVoltage;
 
     [ObservableProperty] private int _currentAcc;
     [ObservableProperty] private int _peakAcc;
     [ObservableProperty] private int _offCount;
 
-    [ObservableProperty] private string _fileName = String.Empty;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveFileCommand))]
+    private string _fileName = String.Empty;
 
-    /// <summary>
-    /// Обработчик события из фонового потока порта (100 Гц)
-    /// </summary>
-    private void HandleNewPacket(PacketData packet)
+    private async Task ListenToPacketsAsync()
     {
-        // 1. Обновляем текущие показатели (для текстовых блоков)
-        CurrentPacket = packet;
-
-        lock (_lock)
+        await foreach (var packet in _serialService.PacketsReader.ReadAllAsync())
         {
-            // 2. Накапливаем для усреднения в UI
-            _voltageSum += packet.LineVoltage;
-            _voltageCount++;
+            _currentPacket = packet;
 
-            CurrentAcc = packet.Accumulator;
-            if (packet.Accumulator == -1)
+            lock (_lock)
             {
-                PeakAcc = 0;
-                OffCount++;
-            }
-            else
-            {
-                PeakAcc = Math.Max(PeakAcc, CurrentAcc);
-            }
+                _voltageSum += packet.LineVoltage;
+                _voltageCount++;
 
-            // Если мы в режиме ожидания, проверяем условие старта
-            if (RecordingState == RecordingStates.Waiting)
-            {
-                // Например: напряжение превысило 220В
-                if (!packet.IsEmpty)
+                CurrentAcc = packet.Accumulator;
+                if (packet.Accumulator == -1)
                 {
-                    App.Current.Dispatcher.Invoke(() => RecordingState = RecordingStates.Recording);
-                    // Не выходим! Этот же пакет (первый подошедший) уже должен попасть в запись
+                    PeakAcc = 0;
+                    OffCount++;
                 }
-            }
+                else
+                {
+                    PeakAcc = Math.Max(PeakAcc, CurrentAcc);
+                }
 
-            // 3. Если включена запись — сохраняем в буфер
-            if (RecordingState == RecordingStates.Recording)
-            {
-                //packet.Number = _historyBuffer.Count + 1;
-                //packet.Time = TimeSpan.FromMilliseconds(packet.Number * 10);
-                // 1. Кладем в список для будущего сохранения в файл
-                _historyBuffer.Add(packet);
+                if (RecordingState == RecordingStates.Waiting)
+                {
+                    if (!packet.IsEmpty)
+                    {
+                        RecordingState = RecordingStates.Recording;
+                    }
+                }
+
+                if (RecordingState == RecordingStates.Recording)
+                {
+                    _historyBuffer.Add(packet);
+                }
             }
         }
     }
 
-    /// <summary>
-    /// Обновление визуальных элементов в UI-потоке
-    /// </summary>
     private void RefreshUI()
     {
         var avgVoltage = 0.0d;
@@ -126,20 +125,21 @@ public partial class MainViewModel : ObservableObject
 
         if (count > 0) SmoothVoltage = avgVoltage / count;
 
-        // Уведомляем систему, что свойства внутри структуры могли измениться
-        OnPropertyChanged(nameof(CurrentPacket));
-        //OnPropertyChanged(nameof(DisplayHistory));
+        Mth = _currentPacket.Mth;
+        ClearDataCommand.NotifyCanExecuteChanged();
 
-        RecordTime = TimeSpan.FromMilliseconds(_historyBuffer.Count * 10);
-
-        // Проверяем саму очередь, а не флаг IsRecording.
-        // Если в очереди что-то есть (даже если запись уже выключена), 
-        // мы это заберем и покажем.
         if (RecordingState == RecordingStates.Recording)
         {
-            // Просто обновляем ссылку. 
-            // DataGrid подхватит актуальное состояние _historyBuffer.
-            DisplayHistory = _historyBuffer.TakeLast(100).ToList();
+            if (DisplayHistorySource != DisplayHistory)
+                DisplayHistorySource = DisplayHistory;
+
+            var latest = CollectionsMarshal.AsSpan(_historyBuffer.TakeLast(DisplayHistory.Count).ToList());
+            for (int i = 0; i < latest.Length; i++)
+            {
+                DisplayHistory[i].Update(latest[i]);
+            }
+
+            RecordTime = TimeSpan.FromMilliseconds(_historyBuffer.Count * 10);
         }
     }
 
@@ -156,7 +156,7 @@ public partial class MainViewModel : ObservableObject
             .Cast<IFileFormatInfo>()
             .Select(e => e.FileFilter));
 
-        var openFileDialog = new Microsoft.Win32.OpenFileDialog { Filter = combinedFilter };
+        var openFileDialog = new OpenFileDialog { Filter = combinedFilter };
 
         if (openFileDialog.ShowDialog() == true)
         {
@@ -175,13 +175,10 @@ public partial class MainViewModel : ObservableObject
                     _historyBuffer.TrimExcess();
                 }
 
-                //DisplayHistory = [];
-
-                //GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
-                //GC.Collect();
-
                 _historyBuffer.AddRange(loadedData);
-                DisplayHistory = loadedData;
+
+                DisplayHistorySource = null;
+                DisplayHistorySource = _historyBuffer;
 
                 StatusMessage = $"Загружено: {loadedData.Count} строк";
                 FileName = System.IO.Path.GetFileNameWithoutExtension(openFileDialog.FileName);
@@ -196,6 +193,10 @@ public partial class MainViewModel : ObservableObject
                 Mouse.OverrideCursor = null;
             }
         }
+
+        // Вызывать ТОЛЬКО после тяжелых операций, типа загрузки файла
+        GC.Collect(2, GCCollectionMode.Optimized);
+        GC.WaitForPendingFinalizers();
     }
 
     private async Task SaveBufferAsync()
@@ -206,7 +207,7 @@ public partial class MainViewModel : ObservableObject
         // Например: "Protobuf (*.pbin)|*.pbin|CSV (*.csv)|*.csv"
         string combinedFilter = string.Join("|", _exporters.Select(e => e.FileFilter));
 
-        var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+        var saveFileDialog = new SaveFileDialog
         {
             Filter = combinedFilter,
             FileName = $"Data_{DateTime.Now:yyyyMMdd_HHmm}",
@@ -269,11 +270,9 @@ public partial class MainViewModel : ObservableObject
             // Стоп записи
             lock (_lock) RecordingState = RecordingStates.Idle;
 
-            // Принудительно выгребаем остатки из очереди ПРЯМО СЕЙЧАС,
-            // не дожидаясь следующего тика таймера.
-            DisplayHistory = new List<PacketData>(_historyBuffer);
+            DisplayHistorySource = null;
+            DisplayHistorySource = _historyBuffer;
 
-            // Теперь данные в таблице и в буфере 100% идентичны.
             await SaveFile();
         }
     }
@@ -290,31 +289,48 @@ public partial class MainViewModel : ObservableObject
         OffCount = 0;
     }
 
-    private bool CanClear() => RecordingState == RecordingStates.Idle;
-    [RelayCommand/*(CanExecute = nameof(CanClear))*/]
+    private bool CanClear() => _historyBuffer.Count > 0;
+    [RelayCommand(CanExecute = nameof(CanClear))]
     private void ClearData()
     {
         lock (_lock)
         {
             _historyBuffer.Clear();
-            //_historyBuffer.TrimExcess();
+            _historyBuffer.TrimExcess();
         }
 
-        DisplayHistory = [];
-
-        //ResetReakAcc();
-        //ResetOffCount();
+        DisplayHistorySource = null;
 
         FileName = String.Empty;
         SaveFileCommand.NotifyCanExecuteChanged();
 
         if (RecordingState == RecordingStates.Recording)
         {
-            RecordingState = RecordingStates.Waiting;
+            lock (_lock) RecordingState = RecordingStates.Waiting;
+            RecordTime = new TimeSpan(0);
         }
 
-        //GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
-        //GC.Collect();
+        GC.Collect(2, GCCollectionMode.Optimized);
+    }
+
+    partial void OnStatusMessageChanged(string value)
+    {
+        if (value != "Готов" && !string.IsNullOrEmpty(value))
+        {
+            _ = ResetStatusAfterDelay();
+        }
+    }
+
+    private int _statusToken = 0;
+
+    private async Task ResetStatusAfterDelay()
+    {
+        var currentToken = ++_statusToken;
+        await Task.Delay(5000);
+        if (currentToken == _statusToken)
+        {
+            StatusMessage = "Готов";
+        }
     }
 
     // DI-контейнер сам найдет этот конструктор и подставит сервис
@@ -324,7 +340,8 @@ public partial class MainViewModel : ObservableObject
         _exporters = exporters.ToList();
         _importers = importers.ToList();
 
-        _serialService.OnPacketReceived += HandleNewPacket;
+        _ = ListenToPacketsAsync();
+
         _serialService.OnStatusChanged += (msg) => StatusMessage = msg;
         // Подписываемся на изменение состояния связи
         _serialService.OnConnectionStatusChanged += (connected) =>
@@ -348,7 +365,7 @@ public partial class MainViewModel : ObservableObject
         };
 
         // Позволяет изменять коллекцию из любого потока, WPF сам синхронизирует это с UI
-        BindingOperations.EnableCollectionSynchronization(DisplayHistory, new object());
+        BindingOperations.EnableCollectionSynchronization(DisplayHistory, _lock);
 
         _uiRefreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
         _uiRefreshTimer.Tick += (s, e) => RefreshUI();

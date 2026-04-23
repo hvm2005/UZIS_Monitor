@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
@@ -11,6 +12,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using UZIS_Monitor.Models;
 using Wpf.Ui.Controls;
+using DataGrid = Wpf.Ui.Controls.DataGrid;
 
 namespace UZIS_Monitor
 {
@@ -22,6 +24,33 @@ namespace UZIS_Monitor
         public MainWindow()
         {
             InitializeComponent();
+        }
+
+        private void DataGrid_LoadingRow(object sender, DataGridRowEventArgs e)
+        {
+            if (e.Row.Item is PacketData dataItem)
+            {
+                // Ждем, когда шаблон применится к строке
+                e.Row.ApplyTemplate();
+
+                // Ищем тот самый Border по имени из шаблона wpf-ui
+                var border = e.Row.Template.FindName("DGR_Border", e.Row) as Border;
+
+                if (border != null)
+                {
+                    if (!dataItem.IsCrcValid)
+                    {
+                        //border.Background = Brushes.IndianRed;
+                        //border.BorderBrush = Brushes.IndianRed;
+                    }
+                    else
+                    {
+                        // Обязательно сбрасываем фон для переиспользуемых строк
+                        //border.Background = Brushes.Transparent;
+                        //border.BorderBrush = Brushes.Transparent;
+                    }
+                }
+            }
         }
 
         private void DataGridRow_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)

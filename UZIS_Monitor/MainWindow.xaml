@@ -115,7 +115,7 @@
                    Opacity="0.8"
                    FontSize="10"
                    FontWeight="Regular"
-                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                   Foreground="{DynamicResource TextFillColorDisabledBrush}"
                    IsHitTestVisible="False">
             <TextBlock.LayoutTransform>
                 <ScaleTransform ScaleX="0.9" />
@@ -130,7 +130,7 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" Margin="20,0">
-                <ui:Button FontWeight="Bold" Command="{Binding ToggleRecordingCommand}" Width="100">
+                <ui:Button Opacity="0.8" FontWeight="Bold" Command="{Binding ToggleRecordingCommand}" Width="100">
                     <ui:Button.Style>
                         <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                             <Setter Property="Appearance" Value="Success" />
@@ -302,7 +302,7 @@
                 <Rectangle Grid.Column="3" VerticalAlignment="Stretch" Width="1" 
                    Fill="{ui:ThemeResource ControlStrokeColorDefaultBrush}" Margin="0,6"/>
 
-                <TextBlock Grid.Column="4" Text="{Binding CurrentPacket.Mth}" VerticalAlignment="Center" Margin="15,0" 
+                <TextBlock Grid.Column="4" Text="{Binding Mth}" VerticalAlignment="Center" Margin="15,0" 
                    FontSize="12" Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"
                    Visibility="{c:Binding IsConnected}"/>
             </Grid>
@@ -315,8 +315,12 @@
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          VirtualizingStackPanel.IsVirtualizing="True"
                          VirtualizingStackPanel.VirtualizationMode="Recycling"
-                         Visibility="{c:Binding 'DisplayHistory.Count > 0'}"
-                         ItemsSource="{Binding DisplayHistory}"
+                         ScrollViewer.CanContentScroll="True"
+                         EnableRowVirtualization="True"
+                         Visibility="{c:Binding 'ItemsSource.Count > 0',
+                                    RelativeSource={RelativeSource Self},
+                                    FallbackValue=Collapsed}"
+                         ItemsSource="{Binding DisplayHistorySource}"
                          AutoGenerateColumns="False"
                          IsReadOnly="True"
                          GridLinesVisibility="None"
@@ -324,6 +328,7 @@
                          CanUserSortColumns="False"
                          CanUserResizeColumns="False"
                          CanUserReorderColumns="False"
+                         FontFamily="Bahnschrift"
                          SelectionMode="Single">
                 <!--<ui:DataGrid.CellStyle>
                 <Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
@@ -331,22 +336,48 @@
                     <Setter Property="FontSize" Value="10"/>
                 </Style>
             </ui:DataGrid.CellStyle>-->
+                <ui:DataGrid.ColumnHeaderStyle>
+                    <Style TargetType="DataGridColumnHeader"
+                           BasedOn="{StaticResource DefaultDataGridColumnHeaderStyle}">
+                        <Setter Property="Foreground" Value="Gray" />
+                        <!--<Setter Property="FontWeight" Value="Regular" />-->
+                        <Setter Property="MinHeight" Value="0" />
+                        <Setter Property="Margin" Value="0, 0, 0, 2" />
+                        <Setter Property="Padding" Value="6, 4, 6, 2"/>
+                    </Style>
+                </ui:DataGrid.ColumnHeaderStyle>
+                <ui:DataGrid.TextColumnElementStyle>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Margin" Value="0, 2"/>
+                        <Setter Property="Padding" Value="0, 2, 0, 0"/>
+                    </Style>
+                </ui:DataGrid.TextColumnElementStyle>
+                <ui:DataGrid.CellStyle>
+                    <Style TargetType="DataGridCell" BasedOn="{StaticResource DefaultDataGridCellStyle}">
+                        <Setter Property="MinHeight" Value="0"/>
+                        <!--<Setter Property="Height" Value="30"/>-->
+                    </Style>
+                </ui:DataGrid.CellStyle>
                 <ui:DataGrid.RowStyle>
                     <Style TargetType="DataGridRow" BasedOn="{StaticResource DefaultDataGridRowStyle}">
-                        <Setter Property="Opacity" Value="0.75" />
+                        <!--<Setter Property="Background" Value="DarkRed"/>-->
+                        <Setter Property="Opacity" Value="0.75"/>
+                        <Setter Property="Margin" Value="0, 0"/>
                         <EventSetter Event="PreviewMouseLeftButtonDown"
                                      Handler="DataGridRow_PreviewMouseLeftButtonDown" />
                         <Style.Triggers>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter Property="Opacity" Value="1" />
                             </Trigger>
+                            <DataTrigger Binding="{Binding IsCrcValid}" Value="False">
+                                <!--<Setter Property="Opacity" Value="0.1" />-->
+                                <!--<Setter Property="Background"
+                                        Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />-->
+                                <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}"/>
+                                <Setter Property="BorderThickness" Value="1" />
+                            </DataTrigger>
                             <DataTrigger Binding="{Binding IsEmpty}" Value="True">
                                 <Setter Property="Opacity" Value="0.25" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding IsCrcValid}" Value="False">
-                                <Setter Property="Background"
-                                        Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
-                                <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -369,63 +400,100 @@
                                     <ScaleTransform ScaleX="0.8" ScaleY="0.8" />
                                     <!-- Уменьшит всё на 20% -->
                                 </ui:DataGrid.LayoutTransform>
+                                <ui:DataGrid.TextColumnElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Margin" Value="0, 2"/>
+                                        <Setter Property="Padding" Value="0, 2, 0, 0"/>
+                                    </Style>
+                                </ui:DataGrid.TextColumnElementStyle>
+                                <ui:DataGrid.CellStyle>
+                                    <Style TargetType="DataGridCell" BasedOn="{StaticResource DefaultDataGridCellStyle}">
+                                        <Setter Property="MinHeight" Value="0"/>
+                                    </Style>
+                                </ui:DataGrid.CellStyle>
                                 <ui:DataGrid.ColumnHeaderStyle>
                                     <Style TargetType="DataGridColumnHeader"
                                            BasedOn="{StaticResource DefaultDataGridColumnHeaderStyle}">
                                         <Setter Property="Foreground" Value="DarkGray" />
                                         <Setter Property="FontWeight" Value="Regular" />
+                                        <Setter Property="MinHeight" Value="0" />
+                                        <Setter Property="Margin" Value="0, 0, 0, 2" />
+                                        <Setter Property="Padding" Value="6, 4, 6, 2"/>
                                     </Style>
                                 </ui:DataGrid.ColumnHeaderStyle>
                                 <ui:DataGrid.Columns>
                                     <DataGridTextColumn Foreground="#A5D6FF"
-                                                        Binding="{Binding Time, StringFormat=\{0:N0\} us, ConverterCulture=ru}"
-                                                        Header="Time" />
+                                                        Binding="{Binding Time, Mode =OneWay, StringFormat=\{0:N0\} us, ConverterCulture=ru}"
+                                                        Header="Time" Width="*"/>
                                     <DataGridTextColumn Foreground="#D2A8FF"
-                                                        Binding="{Binding MeanKkm, StringFormat=\{0:N1\} mV, ConverterCulture=ru}"
-                                                        Header="KKM" />
+                                                        Binding="{Binding MeanKkm, Mode =OneWay, StringFormat=\{0:N1\} mV, ConverterCulture=ru}"
+                                                        Header="KKM" Width="*"/>
                                     <DataGridTextColumn Foreground="#FFA657"
-                                                        Binding="{Binding VoltageArc, StringFormat=\{0:N1\} V, ConverterCulture=ru}"
-                                                        Header="Line" />
+                                                        Binding="{Binding VoltageArc, Mode =OneWay, StringFormat=\{0:N1\} V, ConverterCulture=ru}"
+                                                        Header="Line" Width="*"/>
                                     <DataGridTextColumn Foreground="#7EE787"
-                                                        Binding="{Binding MeanDin, StringFormat=\{0:N1\} mV, ConverterCulture=ru}"
-                                                        Header="DIN" />
+                                                        Binding="{Binding MeanDin, Mode =OneWay, StringFormat=\{0:N1\} mV, ConverterCulture=ru}"
+                                                        Header="DIN" Width="*"/>
                                     <DataGridTextColumn Foreground="#FF7B72"
-                                                        Binding="{Binding M, StringFormat=\{0\}·10⁻⁶, ConverterCulture=ru}"
-                                                        Header="M" />
+                                                        Binding="{Binding M, Mode =OneWay, StringFormat=\{0\}·10⁻⁶, ConverterCulture=ru}"
+                                                        Header="M" Width="*"/>
                                     <DataGridTextColumn Foreground="#FF7B72"
-                                                        Binding="{Binding NoiseInt, StringFormat=\{0\}·10⁻⁶, ConverterCulture=ru}"
-                                                        Header="Noise" />
+                                                        Binding="{Binding NoiseInt, Mode =OneWay, ConverterCulture=ru}"
+                                                        Header="Noise" Width="*"/>
                                 </ui:DataGrid.Columns>
                             </ui:DataGrid>
                         </Grid>
                     </DataTemplate>
                 </ui:DataGrid.RowDetailsTemplate>
-                <ui:DataGrid.ColumnHeaderStyle>
-                    <Style TargetType="DataGridColumnHeader"
-                           BasedOn="{StaticResource DefaultDataGridColumnHeaderStyle}">
-                        <Setter Property="Foreground" Value="Gray" />
-                        <Setter Property="FontWeight" Value="Regular" />
-                    </Style>
-                </ui:DataGrid.ColumnHeaderStyle>
                 <ui:DataGrid.Columns>
                     <!--<DataGridTextColumn Binding="{Binding Number}" Header="Number"/>-->
                     <DataGridTextColumn Foreground="#5E81AC" Width="1.5*"
                                         Binding="{Binding Time, StringFormat='{}{0:mm\\:ss\\.fff}', ConverterCulture=ru}"
-                                        Header="Time" />
-                    <DataGridTextColumn Foreground="#A3BE8C" Binding="{Binding Polarity, ConverterCulture=ru}"
+                                        Header="Time">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <!-- По умолчанию текст виден -->
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <!-- Условие: если поле Polarity НЕ равно "+", скрываем -->
+                                    <DataTrigger Binding="{Binding Polarity}" Value="-">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Foreground="#A3BE8C" Binding="{Binding Polarity, Mode =OneWay, ConverterCulture=ru}"
                                         Header="Pol" />
-                    <DataGridTextColumn Foreground="#D08770" Binding="{Binding EvPhase2, ConverterCulture=ru}"
+                    <DataGridTextColumn Foreground="#D08770" Binding="{Binding EvPhase2, Mode =OneWay, ConverterCulture=ru}"
                                         Header="Ph2" />
-                    <DataGridTextColumn Foreground="#D08770" Binding="{Binding EvPhase4, ConverterCulture=ru}"
+                    <DataGridTextColumn Foreground="#D08770" Binding="{Binding EvPhase4, Mode =OneWay, ConverterCulture=ru}"
                                         Header="Ph4" />
                     <DataGridTextColumn Foreground="#88C0D0" Width="1.5*"
-                                        Binding="{Binding SigmaKkm, StringFormat=\{0:N1\} mV, ConverterCulture=ru}"
+                                        Binding="{Binding SigmaKkm, Mode =OneWay, StringFormat=\{0:N1\} mV, ConverterCulture=ru}"
                                         Header="∑ККМ" />
-                    <DataGridTextColumn Foreground="#A5D6FF" Binding="{Binding Accumulator, ConverterCulture=ru}"
+                    <DataGridTextColumn Foreground="#A5D6FF" Binding="{Binding Accumulator, Mode =OneWay, ConverterCulture=ru}"
                                         Header="Acc" />
                     <DataGridTextColumn Foreground="#B48EAD"
-                                        Binding="{Binding LineVoltage, StringFormat=\{0:N1\} V, ConverterCulture=ru}"
-                                        Header="Line" />
+                                        Binding="{Binding LineVoltage, Mode =OneWay, StringFormat=\{0:N1\} V, ConverterCulture=ru}"
+                                        Header="Line">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <!-- По умолчанию текст виден -->
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <!-- Условие: если поле Polarity НЕ равно "+", скрываем -->
+                                    <DataTrigger Binding="{Binding Polarity, Mode =OneWay}" Value="-">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <!--<DataGridTextColumn Foreground="#D08770" Binding="{Binding Crc16, ConverterCulture=ru}"
+                                        Header="Crc16" />
+                    <DataGridTextColumn Foreground="#D08770" Binding="{Binding CalcCrc, ConverterCulture=ru}"
+                                        Header="CalcCrc" />-->
                 </ui:DataGrid.Columns>
             </ui:DataGrid>
         </Border>

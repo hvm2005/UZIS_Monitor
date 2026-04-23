@@ -1,14 +1,18 @@
-﻿using System;
+﻿using RJCP.IO.Ports;
+using System;
 using System.Collections.Generic;
-using RJCP.IO.Ports;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Channels;
 using UZIS_Monitor.Models;
 
 namespace UZIS_Monitor.Services
 {
     public class SerialPacketService
     {
+        private readonly Channel<PacketData> _packetChannel = Channel.CreateBounded<PacketData>(500);
+        public ChannelReader<PacketData> PacketsReader => _packetChannel.Reader;
+
         private SerialPortStream? _comPort;
         private readonly List<byte> _buffer = new(4096);
         private static readonly byte[] Header = "UZIS"u8.ToArray();
@@ -21,7 +25,6 @@ namespace UZIS_Monitor.Services
         private DateTime _lastPacketTime = DateTime.MinValue;
 
         // Событие для ViewModel. Передает готовую структуру.
-        public event Action<PacketData>? OnPacketReceived;
         public event Action<string>? OnStatusChanged;
         // Событие, которое сообщает: true - подключено, false - потеряно
         public event Action<bool>? OnConnectionStatusChanged;
@@ -43,8 +46,8 @@ namespace UZIS_Monitor.Services
                 else
                 {
                     // Проверка на "зависание" данных (Watchdog)
-                    // Если данных нет более 1 секунды при активном подключении
-                    if ((DateTime.UtcNow - _lastPacketTime).TotalMilliseconds > 200)
+                    // Если данных нет более 2 секунд при активном подключении
+                    if ((DateTime.UtcNow - _lastPacketTime).TotalMilliseconds > 2000)
                     {
                         OnStatusChanged?.Invoke("Данные не поступают. Переподключение...");
                         Disconnect(); // Закрываем порт, чтобы цикл поиска запустился снова
@@ -186,11 +189,11 @@ namespace UZIS_Monitor.Services
                         // Накладываем структуру на память (Zero-Allocation)
                         // Берем "слайс" памяти, ПРОПУСКАЯ первые 4 байта (заголовок)
                         ReadOnlySpan<byte> payloadSpan = span.Slice(Header.Length, PayloadSize);
-                        PacketData data = MemoryMarshal.Read<PacketData>(payloadSpan);
+                        var data = MemoryMarshal.Read<PacketData>(payloadSpan);
 
                         _lastPacketTime = DateTime.UtcNow; // Обновляем метку времени при каждом пакете
                         // Пробрасываем событие (выполняется в потоке порта!)
-                        OnPacketReceived?.Invoke(data);
+                        _packetChannel.Writer.TryWrite(data);
 
                         // Удаляем обработанный пакет
                         _buffer.RemoveRange(0, TotalPacketSize);
