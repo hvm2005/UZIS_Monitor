@@ -17,6 +17,7 @@ namespace UZIS_Monitor.ViewModels
         [ObservableProperty] private double _sigmaKkm;
         [ObservableProperty] private short _accumulator;
         [ObservableProperty] private double _lineVoltage;
+        [ObservableProperty] private double _lineCurrent;
         [ObservableProperty] private bool _isCrcValid;
         [ObservableProperty] private bool _isEmpty;
         //[ObservableProperty] private ushort _crc16;
@@ -32,6 +33,7 @@ namespace UZIS_Monitor.ViewModels
             SigmaKkm = data.SigmaKkm;
             Accumulator = data.Accumulator;
             LineVoltage = data.LineVoltage;
+            LineCurrent = data.LineCurrent;
             IsCrcValid = data.IsCrcValid;
             IsEmpty = data.IsEmpty;
             //Crc16 = data.Crc16;

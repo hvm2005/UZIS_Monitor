@@ -38,8 +38,10 @@ public partial class MainViewModel : ObservableObject
     private readonly DispatcherTimer _uiRefreshTimer;
 
     private PacketData _currentPacket;
-    [ObservableProperty] private string _statusMessage = "Ожидание подключения...";
+    string _idleStatusMessage = string.Empty;
+    [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _isConnected;
+    [ObservableProperty] private string? _portName;
     [ObservableProperty] private TimeSpan _recordTime;
     [ObservableProperty] private bool _isBusy;
 
@@ -180,7 +182,7 @@ public partial class MainViewModel : ObservableObject
                 DisplayHistorySource = null;
                 DisplayHistorySource = _historyBuffer;
 
-                StatusMessage = $"Загружено: {loadedData.Count} строк";
+                StatusMessage = $"Загружено: {loadedData.Count:N0} строк";
                 FileName = System.IO.Path.GetFileNameWithoutExtension(openFileDialog.FileName);
             }
             catch (Exception ex)
@@ -329,7 +331,7 @@ public partial class MainViewModel : ObservableObject
         await Task.Delay(5000);
         if (currentToken == _statusToken)
         {
-            StatusMessage = "Готов";
+            StatusMessage = _idleStatusMessage;
         }
     }
 
@@ -344,10 +346,13 @@ public partial class MainViewModel : ObservableObject
 
         //_serialService.OnStatusChanged += (msg) => StatusMessage = msg;
         // Подписываемся на изменение состояния связи
-        _serialService.OnConnectionStatusChanged += (connected) =>
+        _serialService.OnConnectionStatusChanged += (connected, portName) =>
         {
             // Обновляем свойство для лампочки в UI
             IsConnected = connected;
+            PortName = portName;
+            _idleStatusMessage = connected ? "Готов" : "Не подключено";
+            StatusMessage = _idleStatusMessage;
 
             // ГЛАВНОЕ: Если связь пропала (connected == false) И в данный момент шла запись
             if (!connected && (RecordingState == RecordingStates.Recording))

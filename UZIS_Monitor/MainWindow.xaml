@@ -98,7 +98,7 @@
                    HorizontalAlignment="Center"
                    VerticalAlignment="Center"
                    Opacity="0.8"
-                   FontSize="16"
+                   FontSize="14"
                    FontWeight="SemiBold"
                    FontFamily="Bahnschrift"
                    Foreground="{DynamicResource TextFillColorSecondaryBrush}"
@@ -125,7 +125,7 @@
         <!-- IsHitTestVisible="False" позволяет кликать/перетаскивать окно сквозь текст -->
         <Grid Grid.Row="1" IsEnabled="{Binding IsConnected}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220"/>
+                <ColumnDefinition Width="230"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
@@ -161,39 +161,23 @@
                                     <Setter Property="Visibility" Value="Visible" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding RecordingState}" Value="Recording">
-                                    <Setter Property="Content" Value="{Binding RecordTime}" />
-                                    <Setter Property="ContentStringFormat" Value="mm\:ss" />
-                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Setter Property="Content" Value="{Binding RecordTime}"/>
+                                    <Setter Property="ContentStringFormat" Value="hh\:mm\:ss"/>
+                                    <Setter Property="Visibility" Value="Visible"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </Label.Style>
                 </Label>
             </StackPanel>
-            <StackPanel Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal">
-                <Grid Width="300" VerticalAlignment="Center">
+            <Grid Grid.Column="1" Grid.ColumnSpan="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid VerticalAlignment="Center">
                     <!-- Используем стандартный ProgressBar, WPF-UI сам его стилизует -->
                     <ProgressBar Value="{Binding CurrentAcc}" Maximum="700">
-                        <!--<ProgressBar.Style>
-                            <Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
-                                <Style.Triggers>
-                                    --><!-- Наблюдаем за изменением значения --><!--
-                                    <EventTrigger RoutedEvent="Binding.TargetUpdated">
-                                        <BeginStoryboard>
-                                            <Storyboard>
-                                                <DoubleAnimation 
-                                                    Storyboard.TargetProperty="Value"
-                                                    Duration="0:0:0.01">
-                                                    --><!--<DoubleAnimation.EasingFunction>
-                                                        <CubicEase EasingMode="EaseOut"/>
-                                                    </DoubleAnimation.EasingFunction>--><!--
-                                                </DoubleAnimation>
-                                            </Storyboard>
-                                        </BeginStoryboard>
-                                    </EventTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </ProgressBar.Style>-->
                         <ProgressBar.InputBindings>
                             <MouseBinding MouseAction="LeftClick" Command="{Binding ResetReakAccCommand}" />
                         </ProgressBar.InputBindings>
@@ -208,6 +192,7 @@
                         <!-- Маркер пика (тонкая вертикальная линия) -->
                         <Border Grid.Column="0" 
                                 HorizontalAlignment="Right"
+                                Opacity="0.8"
                                 Width="4" 
                                 Height="12"
                                 CornerRadius="2"
@@ -220,8 +205,7 @@
                         </Border>
                     </Grid>
                 </Grid>
-
-                <Label Margin="10,5,10,0" Opacity="{c:Binding 'OffCount > 0 ? 1 : 0.25'}" FontSize="16" VerticalContentAlignment="Center" FontFamily="Consolas" Cursor="Hand" VerticalAlignment="Center">
+                <Label Grid.Column="1" Margin="10,22,10,0" Opacity="{c:Binding 'OffCount > 0 ? 1 : 0.25'}" FontSize="16" VerticalContentAlignment="Center" FontFamily="Consolas" Cursor="Hand" VerticalAlignment="Top" Grid.ColumnSpan="2">
                     <Label.InputBindings>
                         <MouseBinding MouseAction="LeftClick" Command="{Binding ResetOffCountCommand}" />
                     </Label.InputBindings>
@@ -232,7 +216,7 @@
                         </StackPanel>
                     </Label.Content>
                 </Label>
-            </StackPanel>
+            </Grid>
             <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="20, 0">
                 <ui:Button Command="{Binding ClearDataCommand}"
                            Content="{ui:SymbolIcon Delete24}"
@@ -254,15 +238,17 @@
             <Grid Opacity="0.75">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- 1. Левая часть с анимацией -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="12,0">
-                    <ui:SymbolIcon Margin="0,0,8,0">
+                    <ui:SymbolIcon Margin="0,0,8,0" Visibility="Collapsed">
                         <ui:SymbolIcon.Style>
                             <Style TargetType="ui:SymbolIcon">
                                 <Setter Property="Symbol" Value="Dismiss24"/>
@@ -295,16 +281,28 @@
                 <Rectangle Grid.Column="1" VerticalAlignment="Stretch" Width="1" 
                    Fill="{ui:ThemeResource ControlStrokeColorDefaultBrush}" Margin="0,6"/>
 
-                <TextBlock Grid.Column="2" Text="{Binding SmoothVoltage, StringFormat=\{0:N1\} V, ConverterCulture=ru}" VerticalAlignment="Center" Margin="15,0" 
-                   FontSize="12" Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"
-                   Visibility="{c:Binding IsConnected}"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="15,0" Visibility="{c:Binding IsConnected}">
+                    <ui:SymbolIcon Symbol="Link24" Margin="0,0,5,0" Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"/>
+                    <TextBlock Text="{Binding PortName}" VerticalAlignment="Center"
+                               FontSize="12" Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"/>
+                </StackPanel>
 
                 <Rectangle Grid.Column="3" VerticalAlignment="Stretch" Width="1" 
                    Fill="{ui:ThemeResource ControlStrokeColorDefaultBrush}" Margin="0,6"/>
 
-                <TextBlock Grid.Column="4" Text="{Binding Mth}" VerticalAlignment="Center" Margin="15,0" 
-                   FontSize="12" Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"
-                   Visibility="{c:Binding IsConnected}"/>
+                <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="15,0" Visibility="{c:Binding IsConnected}">
+                    <ui:SymbolIcon Symbol="ArrowTrending24" Margin="0,0,5,0" Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"/>
+                    <TextBlock Text="{Binding SmoothVoltage, StringFormat=\{0:N1\} V, ConverterCulture=ru}" VerticalAlignment="Center"
+                               FontSize="12" Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"/>
+                </StackPanel>
+                <Rectangle Grid.Column="5" VerticalAlignment="Stretch" Width="1" 
+                           Fill="{ui:ThemeResource ControlStrokeColorDefaultBrush}" Margin="0,6"/>
+
+                <StackPanel Grid.Column="6" Orientation="Horizontal" Margin="15,0" Visibility="{c:Binding IsConnected}">
+                    <ui:SymbolIcon Symbol="Wrench24" Margin="0,0,5,0" Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"/>
+                    <TextBlock Text="{Binding Mth}" VerticalAlignment="Center"
+                               FontSize="12" Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"/>
+                </StackPanel>
             </Grid>
         </Border>
         <Border Grid.Row="2" 
@@ -369,15 +367,15 @@
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter Property="Opacity" Value="1" />
                             </Trigger>
+                            <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </DataTrigger>
                             <DataTrigger Binding="{Binding IsCrcValid}" Value="False">
-                                <!--<Setter Property="Opacity" Value="0.1" />-->
+                                <Setter Property="Opacity" Value="1" />
                                 <!--<Setter Property="Background"
                                         Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />-->
                                 <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}"/>
                                 <Setter Property="BorderThickness" Value="1" />
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding IsEmpty}" Value="True">
-                                <Setter Property="Opacity" Value="0.25" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -431,6 +429,9 @@
                                     <DataGridTextColumn Foreground="#FFA657"
                                                         Binding="{Binding VoltageArc, Mode =OneWay, StringFormat=\{0:N1\} V, ConverterCulture=ru}"
                                                         Header="Line" Width="*"/>
+                                    <DataGridTextColumn Foreground="#FFA657"
+                                                        Binding="{Binding VoltageArc1, Mode =OneWay, StringFormat=\{0:N1\} V, ConverterCulture=ru}"
+                                                        Header="Line1" Width="*"/>
                                     <DataGridTextColumn Foreground="#7EE787"
                                                         Binding="{Binding MeanDin, Mode =OneWay, StringFormat=\{0:N1\} mV, ConverterCulture=ru}"
                                                         Header="DIN" Width="*"/>
@@ -447,7 +448,7 @@
                 </ui:DataGrid.RowDetailsTemplate>
                 <ui:DataGrid.Columns>
                     <!--<DataGridTextColumn Binding="{Binding Number}" Header="Number"/>-->
-                    <DataGridTextColumn Foreground="#5E81AC" Width="1.5*"
+                    <DataGridTextColumn Foreground="#5E81AC" Width="1.2*"
                                         Binding="{Binding Time, StringFormat='{}{0:mm\\:ss\\.fff}', ConverterCulture=ru}"
                                         Header="Time">
                         <DataGridTextColumn.ElementStyle>
@@ -463,7 +464,7 @@
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Foreground="#A3BE8C" Binding="{Binding Polarity, Mode =OneWay, ConverterCulture=ru}"
+                    <DataGridTextColumn Foreground="#A3BE8C" Width="0.8*" Binding="{Binding Polarity, Mode =OneWay, ConverterCulture=ru}"
                                         Header="Pol" />
                     <DataGridTextColumn Foreground="#D08770" Binding="{Binding EvPhase2, Mode =OneWay, ConverterCulture=ru}"
                                         Header="Ph2" />
@@ -474,9 +475,25 @@
                                         Header="∑ККМ" />
                     <DataGridTextColumn Foreground="#A5D6FF" Binding="{Binding Accumulator, Mode =OneWay, ConverterCulture=ru}"
                                         Header="Acc" />
-                    <DataGridTextColumn Foreground="#B48EAD"
+                    <DataGridTextColumn Foreground="#B48EAD" Width="1.2*"
+                                        Binding="{Binding LineCurrent, Mode =OneWay, StringFormat=\{0:N1\}, ConverterCulture=ru}"
+                                        Header="Iline">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <!-- По умолчанию текст виден -->
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <!-- Условие: если поле Polarity НЕ равно "+", скрываем -->
+                                    <DataTrigger Binding="{Binding Polarity, Mode =OneWay}" Value="-">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Foreground="#B48EAD" Width="1.2*"
                                         Binding="{Binding LineVoltage, Mode =OneWay, StringFormat=\{0:N1\} V, ConverterCulture=ru}"
-                                        Header="Line">
+                                        Header="Uline">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <!-- По умолчанию текст виден -->
