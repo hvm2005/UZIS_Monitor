@@ -31,7 +31,7 @@ namespace UZIS_Monitor.Services
         private DateTime _lastPacketTime = DateTime.UtcNow;
 
         //public event Action<string>? OnStatusChanged;
-        public event Action<bool>? OnConnectionStatusChanged;
+        public event Action<bool, string?>? OnConnectionStatusChanged;
 
         public SerialService()
         {
@@ -46,7 +46,7 @@ namespace UZIS_Monitor.Services
                 {
                     await TryAutoConnectAsync();
                 }
-                else if ((DateTime.UtcNow - _lastPacketTime).TotalMilliseconds > 2000)
+                else if ((DateTime.UtcNow - _lastPacketTime).TotalMilliseconds > 500)
                 {
                     //OnStatusChanged?.Invoke("Данные не поступают. Переподключение...");
                     Disconnect();
@@ -101,7 +101,7 @@ namespace UZIS_Monitor.Services
             _ = FillPipeAsync(_comPort, pipe.Writer, _serviceCts.Token);
             _ = ReadPipeAsync(pipe.Reader, _serviceCts.Token);
 
-            SetConnectionStatus(true);
+            SetConnectionStatus(true, _comPort.PortName);
             //OnStatusChanged?.Invoke($"Подключено: {_comPort.PortName}");
             _lastPacketTime = DateTime.UtcNow;
         }
@@ -216,12 +216,12 @@ namespace UZIS_Monitor.Services
             return true;
         }
 
-        private void SetConnectionStatus(bool connected)
+        private void SetConnectionStatus(bool connected, string? portName)
         {
             if (_isConnected != connected)
             {
                 _isConnected = connected;
-                OnConnectionStatusChanged?.Invoke(connected);
+                OnConnectionStatusChanged?.Invoke(connected, portName);
             }
         }
 
@@ -233,7 +233,7 @@ namespace UZIS_Monitor.Services
             try { _comPort.Dispose(); } catch { }
 
             _comPort = null;
-            SetConnectionStatus(false);
+            SetConnectionStatus(false, null);
             //OnStatusChanged?.Invoke("Устройство отключено");
         }
 

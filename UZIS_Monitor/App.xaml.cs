@@ -1,9 +1,12 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using ProtoBuf;
 using System.Configuration;
 using System.Data;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
+using UZIS_Monitor.Models;
 using UZIS_Monitor.Services;
 using UZIS_Monitor.Services.Interfaces;
 using UZIS_Monitor.ViewModels;
@@ -88,6 +91,9 @@ namespace UZIS_Monitor
             }
 
             base.OnStartup(e);
+
+            string proto = Serializer.GetProto<List<PacketData>>();
+            File.WriteAllText("schema.proto", proto);
         }
 
         protected override void OnExit(ExitEventArgs e)
@@ -98,7 +104,7 @@ namespace UZIS_Monitor
             // Останавливаем фоновые потоки и закрываем порт
             serialService?.StopService();
 
-            _mutex?.ReleaseMutex();
+            try { _mutex?.ReleaseMutex(); } catch {}
             _mutex?.Dispose();
 
             base.OnExit(e);
